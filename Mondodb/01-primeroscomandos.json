@@ -1,0 +1,244 @@
+show dbs
+
+use db1
+
+db1.createCollection("nombre coleccion")
+
+use  db1
+db1.show.Collections
+
+db1.empleado.insertOne({nombre:'ramon',edad:'Lopez'})
+
+db1.empleado.find()
+
+db1.empleado.find({})
+
+db1.dropDatabase()
+
+db1.empleado.insertMany([{
+        ... nombre:'Hermeregildo', 
+        
+    ..edad:67
+    
+    ... },
+    
+    ... {
+        
+        ... nombre:'Soy la vaca del corral',
+        
+        ... edad:14,
+        
+        ... sexo:'Mujer'
+        
+        ... }, 
+        
+        ... {
+            
+            ... nombre:'Romulo',
+            
+            ... edad:40,
+            
+            ... nacionalidad:'Nigeriano'
+            
+            ... }, 
+            
+            ... {
+                
+                ... nombre:'Cristian Andres',
+                
+                ... localidad:'San Miguel de las Piedras',
+                
+                ... nacionalidad:'Aleman',
+                
+                ... edad:'Esta morro'
+                
+                ... ,
+}])    
+
+-------------Consultas--------------
+
+db.collection.find({campo:{$oper:'valor'}})
+
+dg.collection.find({condicion1,condicion2})
+
+db.collection.find({$and:[{condicion1},{condicion2}]})
+
+db.libros.find({editorial:{$eq:"Biblio"}})
+
+db.libros.find({precio:25})
+
+db.libros.find({precio:{$eq:25}})
+
+
+db.libros.find({precio:{$gte:20}})
+
+db.libros.find({precio:{$gte:20}})
+
+db.libros.find({precio:{$lt:5}})
+
+db.libros.find({editorial:{$in:['Bilio', 'Planeta']}})
+
+db.libros.findOne({precio:{$in:[20, 25]}})
+
+db.libros.find({precio:{$gt:25},cantidad:{$lt:15}})
+
+
+db.libros.find({$and: [{precio:{$gt:25}}, {cantidad:{$lt:15}}]})
+
+
+----------------Operador or----------------------
+
+sintaxis 
+{ $or: [ { <expression1> }, { <expression2> }, ... , { <expressionN> } ] }
+
+todos aquellos libros que valgan mas de 25 dolares o que cuya cantidad sea inferior a 15
+
+({$or:[{ precio:{$gt:25}},{cantidad:{$lt:15}}]})
+
+seleccionar los libros de la editorial biblio con precio mayor a 40 o libros de la editorial planeta con precio mayor a 30
+
+db.libros.find( { $or: [ { $and: [{ editorial: { $eq: 'Biblio' } }, { precio: { $gt: 10 } }] }, { $and: [{ precio: { $gt: 30 } }, { editorial: { $eq: 'Planeta' } }] }] })
+
+----------------Proyecciones----------------------------
+ver solo ciertas columnas
+
+db.libros.find({},{titulo:1})
+db.libros.find({titulo:'Don quijote'},{titulo:1})
+db.libros.find({titulo:'Don quijote'},{_id:0,titulo:1})
+
+-----------------Operador $exists, saber si existe una columna en un elemento--------------------
+db.libros.find({$and:[{precio:{$gt:5}},{autor:{$exists:true}}]})
+
+Type, mostrar los documentos que tiene un tipo de dato
+
+db.libros.find({precio:{$type:1}})
+db.libros.find({precio:{$type:'double'}})
+
+------------------Operador update---------------------------
+
+db.libros.updateOne({titulo:'JSON para todos'},{$set:{titulo:'Java el Rey'}})
+db.libros.updateMany({precio:{$gt:9}},{$set:{precio:150}})
+db.libros.updateMany({cantidad:{$gt:20}},{$mul:{precio:2}})
+
+-------------------operador replaceOne----------------------
+//no se puede cambiar el id es inmutable
+db.libros.replaceOne({"_id":13},{"titulo":"Las patoaventuras de Ezequiel Alias Mateo"})
+
+-------------------operador delete--------------------------
+db.libros.deleteOne({"titulo":'Java el Rey'})
+db.libros.deleteMany({cantidad:{$gt:20}})
+
+-----------------operador size, numero de documentos que cumplen la condicion-------------
+db.libros.find({}, { "titulo": 1, "precio": 1, "_id": 0, "editorial": 1 }).size()
+
+-------------------Expresiones regulares---------------------
+db.libros.find({"titulo":/MongoDB/})
+//buscar los que terminan en os
+db.libros.find({"titulo":/tos$/})
+//buscar los que empiezen con M
+db.libros.find({"titulo":/^M/})
+db.libros.find({titulo:{$regex:/MonGO/, $options:"i"}})
+
+--------------------Operador sort-----------------------------
+1 ascendente
+-1 descendente
+db.libros.find({},{titulo:1,precio:1,_id:0}).sort({titulo:1,editorial:1})
+
+-------------------Operador skip, saltar algunos documentos----------
+db.libros.find({}, { "titulo": 1, "precio": 1, "_id": 0, "editorial": 1 }).skip(2)
+
+-------------------Operador limit, mostrar los primeros documentos---------------------------------------
+db.libros.find({}, { "titulo": 1, "precio": 1, "_id": 0, "editorial": 1 }).limit(2)
+
+{
+    editorial:'Biblio',
+  }
+  {
+    _id:0,
+    titulo:1,
+    precio:1,
+    cantidad:1,
+    "Nombre Editorial": "$editorial",
+    "Total Ganancia":{
+      $multiply:['$precio','$cantidad']
+    }
+  }
+  {
+    precio:1
+  }
+
+
+  [
+    {
+      $group:
+        {
+          _id: "$editorial",
+          "Numero Documentos": {
+            $count: {}
+          }
+        }
+    },
+    {
+      $sort:
+        {
+          "Numeros Documentos": 1
+        }
+    }
+  ]
+
+
+
+
+
+  [
+    {
+      $group:
+        {
+          _id: "$editorial",
+          "Numero de Documentos": {
+            $count: {}
+          },
+          media: {
+            $avg: "$precio"
+          },
+          "Precio Maximo": {
+            $max: "$precio"
+          }
+        }
+    },
+    {
+      $sort:
+
+        {
+          "Precio Maximo": 1
+        }
+    }
+  ]
+
+
+  [
+    {
+      $group:
+        {
+          _id: "$editorial",
+          Numero: {
+            $count: {}
+          },
+          media: {
+            $avg: "$precio"
+          }
+        }
+    },
+    {
+      $set:
+        {
+          "Media Total": {
+            $trunc: ["$media", 2]
+          }
+        }
+    },
+    {
+      $out:
+        "media_editoriales"
+    }
+  ]
