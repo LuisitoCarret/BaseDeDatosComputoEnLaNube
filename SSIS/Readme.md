@@ -1,0 +1,138 @@
+# Practica de creacionde data warehouse
+
+Usamos master para cambiar el contexto de la base de datos actual a la base de datos "master"
+```sql
+USE master;
+```
+
+Esta es una declaracion condicional que verifica si la base de datos llamada _TK463DW_ existe y _DB_ID()_ es una función que devuelve el ID de la base de datos si existe, de lo contrario, devuelve _NULL_ .Si la base de datos _TK463DW_ existe ,la instrucción _DROP_ elimina la base de datos _TK463DW_.
+
+```sql
+IF DB_ID('TK463DW') IS NOT NULL
+DROP DATABASE TK463DW;
+GO
+```
+
+Se crea una nueva base de datos llamada _TK463DW_ con un archivo de datos principal y un archivo de registro de transacciones en las ubicaciones especificadas, con tamaños iniciales y configuraciones de crecimiento automático definidos.
+```sql
+CREATE DATABASE TK463DW
+ON PRIMARY
+(NAME = N'TK463DW', FILENAME = N'C:\TK463\TK463DW.mdf',
+SIZE = 307200KB , FILEGROWTH = 10240KB )
+LOG ON
+(NAME = N'TK463DW_log', FILENAME = N'C:\TK463\TK463DW_log.ldf',
+SIZE = 51200KB , FILEGROWTH = 10%);
+GO
+```
+
+Este bloque de código cambia el modelo de recuperación de la base de datos _TK463DW_ a _Simple_, lo que permite una gestión más eficiente del espacio en disco al liberar automáticamente el espacio de registro utilizado por transacciones completadas o truncadas.
+```sql
+ALTER DATABASE TK463DW SET RECOVERY SIMPLE WITH NO_WAIT;
+GO
+```
+
+Se verifica si existe una secuencia llamada _SeqCustomerDwKey_ en la base de datos _TK463DW_ y, si existe, la elimina. 
+```sql
+USE TK463DW;
+GO
+IF OBJECT_ID('dbo.SeqCustomerDwKey','SO') IS NOT NULL
+DROP SEQUENCE dbo.SeqCustomerDwKey;
+GO
+```
+
+Una vez que se elimino, se crea una secuencia que generará una serie de valores enteros empezando desde 1 y aumentando en 1 en cada paso sucesivo. 
+```sql
+CREATE SEQUENCE dbo.SeqCustomerDwKey AS INT
+START WITH 1
+INCREMENT BY 1;
+GO
+```
+
+Se crea una tabla llamada _Customers_ que contiene información sobre los clientes, incluyendo sus nombres, direcciones de correo electrónico, fechas de nacimiento, género, educación, ocupación, ubicación, etc. También incluye una columna calculada para la edad de los clientes y una columna para indicar si son clientes actuales o no. La clave principal de la tabla está definida en la columna _CustomerDwKey_.
+```sql
+CREATE TABLE dbo.Customers
+(
+CustomerDwKey INT NOT NULL,
+CustomerKey INT NOT NULL,
+FullName NVARCHAR(150) NULL,
+EmailAddress NVARCHAR(50) NULL,
+BirthDate DATE NULL,
+MaritalStatus NCHAR(1) NULL,
+Gender NCHAR(1) NULL,
+Education NVARCHAR(40) NULL,
+Occupation NVARCHAR(100) NULL,
+City NVARCHAR(30) NULL,
+StateProvince NVARCHAR(50) NULL,
+CountryRegion NVARCHAR(50) NULL,
+Age AS
+CASE
+WHEN DATEDIFF(yy, BirthDate, CURRENT_TIMESTAMP) <= 40
+THEN 'Younger'
+WHEN DATEDIFF(yy, BirthDate, CURRENT_TIMESTAMP) > 50
+THEN 'Older'
+ELSE 'Middle Age'
+END,
+
+CurrentFlag BIT NOT NULL DEFAULT 1,
+CONSTRAINT PK_Customers PRIMARY KEY (CustomerDwKey)
+);
+GO
+```
+
+Tambien creamos una tabla _Products_ que contiene información sobre productos, como su nombre, color, tamaño, subcategoría y categoría. La clave principal de la tabla está definida en la columna "ProductKey".
+```sql
+create table dbo.Products(
+ProductKey int not null,
+ProductName nvarchar(50),
+Color nvarchar(15),
+Size nvarchar(50),
+SubcategoryName nvarchar(50),
+CategoryName nvarchar(50),
+constraint PK_Products primary key(ProductKey)
+);
+```
+Creamos una tabla llamda _Dates_ que contiene información de fechas, como la fecha completa, el nombre del mes, el trimestre del calendario y el año del calendario. La clave primaria de la tabla está definida en la columna _DateKey_.
+```sql
+CREATE TABLE dbo.Dates
+(
+DateKey INT NOT NULL,
+FullDate DATE NOT NULL,
+MonthNumberName NVARCHAR(15) NULL,
+CalendarQuarter TINYINT NULL,
+CalendarYear SMALLINT NULL,
+CONSTRAINT PK_Dates PRIMARY KEY (DateKey)
+);
+GO
+```
+
+Por ultimo creamos una tabla llamada _InternetSales_ que contiene información relacionada con las ventas en línea,como quién compró qué producto, cuánto se pagó y cuántos productos se compraron. La clave primaria de la tabla está definida en la columna _InternetSalesKey_.
+```sql
+CREATE TABLE dbo.InternetSales
+(
+InternetSalesKey INT NOT NULL IDENTITY(1,1),
+CustomerDwKey INT NOT NULL,
+ProductKey INT NOT NULL,
+DateKey INT NOT NULL,
+OrderQuantity SMALLINT NOT NULL DEFAULT 0,
+SalesAmount MONEY NOT NULL DEFAULT 0,
+UnitPrice MONEY NOT NULL DEFAULT 0,
+DiscountAmount FLOAT NOT NULL DEFAULT 0,
+CONSTRAINT PK_InternetSales
+PRIMARY KEY (InternetSalesKey)
+);
+GO
+```
+
+Las siguientes instrucciones agregan restricciones de clave externa a la tabla _InternetSales_ para garantizar la integridad referencial entre las tablas _InternetSales_, _Customers_, _Products_ y _Dates_. Estas restricciones aseguran que los datos en la tabla _InternetSales_ estén bien organizados y relacionados entre sí.
+```sql
+ALTER TABLE dbo.InternetSales ADD CONSTRAINT
+FK_InternetSales_Customers FOREIGN KEY(CustomerDwKey)
+REFERENCES dbo.Customers (CustomerDwKey);
+ALTER TABLE dbo.InternetSales ADD CONSTRAINT
+FK_InternetSales_Products FOREIGN KEY(ProductKey)
+REFERENCES dbo.Products (ProductKey);
+ALTER TABLE dbo.InternetSales ADD CONSTRAINT
+FK_InternetSales_Dates FOREIGN KEY(DateKey)
+REFERENCES dbo.Dates (DateKey);
+GO
+```
